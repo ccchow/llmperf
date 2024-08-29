@@ -5,6 +5,7 @@ from llmperf.ray_clients.openai_chat_completions_client import (
 )
 from llmperf.ray_clients.sagemaker_client import SageMakerClient
 from llmperf.ray_clients.vertexai_client import VertexAIClient
+from llmperf.ray_clients.trtllm_client import TrtLLMClient
 from llmperf.ray_llm_client import LLMClient
 
 
@@ -30,6 +31,8 @@ def construct_clients(llm_api: str, num_clients: int) -> List[LLMClient]:
         clients = [VertexAIClient.remote() for _ in range(num_clients)]
     elif llm_api in SUPPORTED_APIS:
         clients = [LiteLLMClient.remote() for _ in range(num_clients)]
+    elif llm_api == "trtllm":
+        clients = [TrtLLMClient.remote() for _ in range(num_clients)]
     else:
         raise ValueError(
             f"llm_api must be one of the supported LLM APIs: {SUPPORTED_APIS}"
