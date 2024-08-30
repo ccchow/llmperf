@@ -6,7 +6,7 @@ from typing import Any, Dict
 import tensorrt_llm
 import tensorrt_llm.profiler
 from tensorrt_llm.logger import logger
-from tensorrt_llm.runtime import PYTHON_BINDINGS, ModelRunner
+from tensorrt_llm.runtime import PYTHON_BINDINGS, ModelRunner, ModelRunnerCpp
 
 import ray
 import requests
@@ -20,10 +20,26 @@ from llmperf import common_metrics
 class TrtLLMClient(LLMClient):
     """Client for TensorRT LLM API."""
 
+    runner = None
+    tokenizer = None
+
     def __init__(self):
         self.tokenizer = LlamaTokenizerFast.from_pretrained(
             "hf-internal-testing/llama-tokenizer"
         )
+
+        runtime_rank = tensorrt_llm.mpi_rank()
+        runner_cls = ModelRunnerCpp
+        runner_kwargs = dict(
+            engine_dir=args.engine_dir,
+            lora_dir=args.lora_dir,
+            rank=runtime_rank,
+            debug_mode=args.debug_mode,
+            lora_ckpt_source=args.lora_ckpt_source,
+            max_output_len=args.max_output_len,
+        )
+
+        runner = runner_cls.from_dir(**runner_kwargs)
 
     def llm_request(self, request_config: RequestConfig) -> Dict[str, Any]:
         prompt = request_config.prompt
@@ -90,5 +106,35 @@ class TrtLLMClient(LLMClient):
         metrics[common_metrics.NUM_TOTAL_TOKENS] = tokens_received + prompt_len
         metrics[common_metrics.NUM_OUTPUT_TOKENS] = tokens_received
         metrics[common_metrics.NUM_INPUT_TOKENS] = prompt_len
+
+        with torch.no_grad():
+            tensorrt_llm_llama.setup(
+                batch_size=args.batch_size,
+                max_context_length=max_length,
+                max_new_tokens=args.output_len,
+                beam_width=args.num_beams,
+                max_attention_window_size=args.max_attention_window_size,
+                multi_block_mode=args.multi_block_mode,
+                enable_context_fmha_fp32_acc=args.enable_context_fmha_fp32_acc)
+            logger.info(f"Generation session set up with the parameters: \
+                batch_size: {tensorrt_llm_llama.batch_size}, \
+                max_context_length: {tensorrt_llm_llama.max_context_length}, \
+                max_new_tokens: {tensorrt_llm_llama.max_new_tokens}, \
+                beam_width: {tensorrt_llm_llama.beam_width}, \
+                max_attention_window_size: {tensorrt_llm_llama.max_attention_window_size}, \
+                multi_block_mode: {tensorrt_llm_llama.multi_block_mode}, \
+                enable_context_fmha_fp32_acc: {tensorrt_llm_llama.enable_context_fmha_fp32_acc}"
+                        )
+
+            if tensorrt_llm_llama.remove_input_padding:
+                output_ids = tensorrt_llm_llama.decode_batch(
+                    line_encoded, sampling_config)
+            else:
+                output_ids = tensorrt_llm_llama.decode(
+                    line_encoded,
+                    input_lengths,
+                    sampling_config,
+                )
+                torch.cuda.synchronize()
 
         return metrics, generated_text, request_config
