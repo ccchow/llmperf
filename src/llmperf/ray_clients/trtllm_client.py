@@ -56,42 +56,67 @@ class TrtLLMClient(LLMClient):
 
         start_time = time.monotonic()
 
-        generated_text = self.runner.generate(
-            batch_input_ids=decoder_input_ids
-            if is_enc_dec else batch_input_ids,
-            encoder_input_ids=encoder_input_ids if is_enc_dec else None,
-            encoder_input_features=encoder_input_features
-            if is_enc_dec else None,
-            encoder_output_lengths=encoder_output_lengths
-            if is_enc_dec else None,
-            max_new_tokens=args.max_output_len,
-            max_attention_window_size=args.max_attention_window_size,
-            sink_token_length=args.sink_token_length,
-            end_id=end_id,
-            pad_id=pad_id,
-            temperature=args.temperature,
-            top_k=args.top_k,
-            top_p=args.top_p,
-            num_beams=args.num_beams,
-            length_penalty=args.length_penalty,
-            early_stopping=args.early_stopping,
-            repetition_penalty=args.repetition_penalty,
-            presence_penalty=args.presence_penalty,
-            frequency_penalty=args.frequency_penalty,
-            stop_words_list=stop_words_list,
-            bad_words_list=bad_words_list,
-            output_cum_log_probs=(args.output_cum_log_probs_npy != None),
-            output_log_probs=(args.output_log_probs_npy != None),
-            random_seed=args.random_seed,
-            lora_uids=args.lora_task_uids,
-            prompt_table=args.prompt_table_path,
-            prompt_tasks=args.prompt_tasks,
-            streaming=args.streaming,
-            output_sequence_lengths=True,
-            no_repeat_ngram_size=args.no_repeat_ngram_size,
-            return_dict=True,
-            medusa_choices=args.medusa_choices,
-            return_all_generated_tokens=args.return_all_generated_tokens)
+        with torch.no_grad():
+            outputs = runner.generate(
+                batch_input_ids,
+                max_new_tokens=args.max_output_len,
+                max_attention_window_size=args.max_attention_window_size,
+                end_id=end_id,
+                pad_id=pad_id,
+                temperature=args.temperature,
+                top_k=args.top_k,
+                top_p=args.top_p,
+                num_beams=args.num_beams,
+                length_penalty=args.length_penalty,
+                early_stopping=args.early_stopping,
+                repetition_penalty=args.repetition_penalty,
+                presence_penalty=args.presence_penalty,
+                frequency_penalty=args.frequency_penalty,
+                stop_words_list=stop_words_list,
+                bad_words_list=bad_words_list,
+                output_cum_log_probs=(args.output_cum_log_probs_npy !=
+                                        None),
+                output_log_probs=(args.output_log_probs_npy != None),
+                random_seed=args.random_seed,
+                lora_uids=args.lora_task_uids,
+                prompt_table=args.prompt_table_path,
+                prompt_tasks=args.prompt_tasks,
+                streaming=args.streaming,
+                output_sequence_lengths=True,
+                return_dict=True,
+                return_all_generated_tokens=args.return_all_generated_tokens
+            )
+
+            output_text = self.tokenizer.decode(outputs)
+        
+            if tensorrt_llm.mpi_rank() == 0:
+                output_ids = outputs['output_ids']
+                sequence_lengths = outputs['sequence_lengths']
+                context_logits = None
+                generation_logits = None
+                cum_log_probs = None
+                log_probs = None
+                if self.runner.gather_context_logits:
+                    context_logits = outputs['context_logits']
+                if self.runner.gather_generation_logits:
+                    generation_logits = outputs['generation_logits']
+                if args.output_cum_log_probs_npy != None:
+                    cum_log_probs = outputs['cum_log_probs']
+                if args.output_log_probs_npy != None:
+                    log_probs = outputs['log_probs']
+                print_output(self.tokenizer,
+                            output_ids,
+                            input_lengths,
+                            sequence_lengths,
+                            output_csv=args.output_csv,
+                            output_npy=args.output_npy,
+                            context_logits=context_logits,
+                            generation_logits=generation_logits,
+                            output_logits_npy=args.output_logits_npy,
+                            cum_log_probs=cum_log_probs,
+                            log_probs=log_probs,
+                            output_cum_log_probs_npy=args.output_cum_log_probs_npy,
+                            output_log_probs_npy=args.output_log_probs_npy)
 
         tokens_received = len(self.tokenizer.encode(generated_text))
 
