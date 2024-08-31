@@ -3,6 +3,11 @@ import os
 import time
 from typing import Any, Dict
 
+import argparse
+import ast
+import csv
+from pathlib import Path
+
 import tensorrt_llm
 import tensorrt_llm.profiler
 from tensorrt_llm.logger import logger
@@ -94,8 +99,8 @@ class TrtLLMClient(LLMClient):
                 return_all_generated_tokens=args.return_all_generated_tokens
             )
 
-            output_text = self.tokenizer.decode(outputs)
-        
+            generated_text = self.tokenizer.decode(outputs)
+
             if tensorrt_llm.mpi_rank() == 0:
                 output_ids = outputs['output_ids']
                 sequence_lengths = outputs['sequence_lengths']
