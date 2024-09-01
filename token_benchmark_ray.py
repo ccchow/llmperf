@@ -449,6 +449,14 @@ args.add_argument(
         "name=foo,bar=1. These will be added to the metadata field of the results. "
     ),
 )
+args.add_argument(
+    "--trtllm_engine_dir",
+    type=str,
+    default="",
+    help=(
+        "The path to the engine directory for the TensorRT LLM API. "
+    ),
+)
 
 if __name__ == "__main__":
     env_vars = dict(os.environ)
