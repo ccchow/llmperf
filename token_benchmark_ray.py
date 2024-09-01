@@ -36,6 +36,7 @@ def get_token_throughput_latencies(
     max_num_completed_requests: int = 500,
     test_timeout_s=90,
     llm_api="openai",
+    trtllm_engine_dir=""
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Get the token throughput and latencies for the given model.
 
@@ -67,7 +68,7 @@ def get_token_throughput_latencies(
     if not additional_sampling_params:
         additional_sampling_params = {}
 
-    clients = construct_clients(llm_api=llm_api, num_clients=num_concurrent_requests)
+    clients = construct_clients(llm_api=llm_api, num_clients=num_concurrent_requests, trtllm_engine_dir=trtllm_engine_dir)
     req_launcher = RequestsLauncher(clients)
     completed_requests = []
     num_completed_requests = 0
@@ -276,6 +277,7 @@ def run_token_benchmark(
     additional_sampling_params: str,
     results_dir: str,
     user_metadata: Dict[str, Any],
+    trtllm_engine_dir: str
 ):
     """
     Args:
@@ -311,6 +313,7 @@ def run_token_benchmark(
         stddev_output_tokens=stddev_output_tokens,
         num_concurrent_requests=num_concurrent_requests,
         additional_sampling_params=json.loads(additional_sampling_params),
+        trtllm_engine_dir=trtllm_engine_dir
     )
 
     if results_dir:
@@ -472,4 +475,5 @@ if __name__ == "__main__":
         additional_sampling_params=args.additional_sampling_params,
         results_dir=args.results_dir,
         user_metadata=user_metadata,
+        trtllm_engine_dir=args.trtllm_engine_dir
     )

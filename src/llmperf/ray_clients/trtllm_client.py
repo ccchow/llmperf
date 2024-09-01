@@ -16,6 +16,7 @@ from llmperf.ray_llm_client import LLMClient
 from llmperf.models import RequestConfig
 from llmperf import common_metrics
 
+
 @ray.remote
 class TrtLLMClient(LLMClient):
     """Client for TensorRT LLM API."""
@@ -23,10 +24,20 @@ class TrtLLMClient(LLMClient):
     runner = None
     tokenizer = None
 
-    engine_dir = None
+    engine_dir = ""  # path to the engine directory
     max_output_len = 2048
 
-    def __init__(self):
+    def __init__(self, engine_dir: str = ""):
+
+        # read engine dir from config file
+        # example of config file:
+        # /path/to/engine/dir
+        if engine_dir is not None:
+            self.engine_dir = engine_dir
+        else:
+            with open("trtllm_config.txt", "r") as f:
+                self.engine_dir = f.read().strip()
+
         self.tokenizer = LlamaTokenizerFast.from_pretrained(
             "hf-internal-testing/llama-tokenizer"
         )
@@ -56,9 +67,9 @@ class TrtLLMClient(LLMClient):
         start_time = time.monotonic()
 
         batch_input_ids = parse_input(tokenizer=self.tokenizer,
-                                    input_text=request_config.prompt,
-                                    add_special_tokens=False,
-                                    max_input_length=2048)
+                                      input_text=request_config.prompt,
+                                      add_special_tokens=False,
+                                      max_input_length=2048)
 
         try:
             with torch.no_grad():
@@ -68,7 +79,6 @@ class TrtLLMClient(LLMClient):
                 )
         except Exception as e:
             metrics[common_metrics.ERROR_MSG] = str(e)
-
 
         output_ids = outputs['output_ids']
         generated_text = self.tokenizer.decode(output_ids)
@@ -88,6 +98,7 @@ class TrtLLMClient(LLMClient):
         metrics[common_metrics.NUM_INPUT_TOKENS] = prompt_len
 
         return metrics, generated_text, request_config
+
 
 def parse_input(tokenizer,
                 input_text=None,

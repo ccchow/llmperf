@@ -12,7 +12,7 @@ from llmperf.ray_llm_client import LLMClient
 SUPPORTED_APIS = ["openai", "anthropic", "litellm"]
 
 
-def construct_clients(llm_api: str, num_clients: int) -> List[LLMClient]:
+def construct_clients(llm_api: str, num_clients: int, trtllm_engine_dir: str = "") -> List[LLMClient]:
     """Construct LLMClients that will be used to make requests to the LLM API.
 
     Args:
@@ -24,7 +24,8 @@ def construct_clients(llm_api: str, num_clients: int) -> List[LLMClient]:
 
     """
     if llm_api == "openai":
-        clients = [OpenAIChatCompletionsClient.remote() for _ in range(num_clients)]
+        clients = [OpenAIChatCompletionsClient.remote()
+                   for _ in range(num_clients)]
     elif llm_api == "sagemaker":
         clients = [SageMakerClient.remote() for _ in range(num_clients)]
     elif llm_api == "vertexai":
@@ -32,7 +33,8 @@ def construct_clients(llm_api: str, num_clients: int) -> List[LLMClient]:
     elif llm_api in SUPPORTED_APIS:
         clients = [LiteLLMClient.remote() for _ in range(num_clients)]
     elif llm_api == "trtllm":
-        clients = [TrtLLMClient.remote() for _ in range(num_clients)]
+        clients = [TrtLLMClient.remote(trtllm_engine_dir)
+                   for _ in range(num_clients)]
     else:
         raise ValueError(
             f"llm_api must be one of the supported LLM APIs: {SUPPORTED_APIS}"
