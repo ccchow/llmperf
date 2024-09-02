@@ -72,6 +72,7 @@ class TrtLLMClient(LLMClient):
         batch_input_ids = parse_input(tokenizer=self.tokenizer,
                                       input_text=request_config.prompt,
                                       add_special_tokens=False,
+                                      model_name=request_config.model,
                                       max_input_length=2048)
 
         try:
