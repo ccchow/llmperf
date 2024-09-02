@@ -17,7 +17,7 @@ from llmperf.models import RequestConfig
 from llmperf import common_metrics
 
 
-@ray.remote
+@ray.remote(num_gpus=8)
 class TrtLLMClient(LLMClient):
     """Client for TensorRT LLM API."""
 
