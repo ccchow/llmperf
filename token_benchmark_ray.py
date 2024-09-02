@@ -463,6 +463,12 @@ if __name__ == "__main__":
 
     # set CUDA_VISIBLE_DEVICES to all GPUs
     env_vars["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
+
+    # get cuda device via torch
+    import torch
+    cuda_device = torch.cuda.current_device()
+    print(f"Using CUDA device: {cuda_device}")
+
     # print the number of GPUs available
     ray.init(num_gpus=8, runtime_env={"env_vars": env_vars})
     args = args.parse_args()
