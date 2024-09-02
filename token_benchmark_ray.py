@@ -460,7 +460,7 @@ args.add_argument(
 
 if __name__ == "__main__":
     env_vars = dict(os.environ)
-    ray.init(runtime_env={"env_vars": env_vars})
+    ray.init(num_gpus=8, runtime_env={"env_vars": env_vars})
     args = args.parse_args()
 
     # Parse user metadata.
