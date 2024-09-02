@@ -122,15 +122,16 @@ def parse_input(tokenizer,
         if 'whisper' in model_name.lower():
             batch_input_ids.append(tokenizer.prefix_tokens)
         else:
-            for curr_text in input_text:
-                if prompt_template is not None:
-                    curr_text = prompt_template.format(input_text=curr_text)
-                input_ids = tokenizer.encode(
-                    curr_text,
-                    add_special_tokens=add_special_tokens,
-                    truncation=True,
-                    max_length=max_input_length)
-                batch_input_ids.append(input_ids)
+            # for curr_text in input_text:
+            print(input_text)
+            if prompt_template is not None:
+                input_text = prompt_template.format(input_text=input_text)
+            input_ids = tokenizer.encode(
+                input_text,
+                add_special_tokens=add_special_tokens,
+                truncation=True,
+                max_length=max_input_length)
+            batch_input_ids.append(input_ids)
     else:
         if input_file.endswith('.csv'):
             with open(input_file, 'r') as csv_file:
