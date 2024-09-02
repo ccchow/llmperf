@@ -460,6 +460,14 @@ args.add_argument(
 
 if __name__ == "__main__":
     env_vars = dict(os.environ)
+
+    # set CUDA_VISIBLE_DEVICES to all GPUs
+    env_vars["CUDA_VISIBLE_DEVICES"] = ",".join(map(str,
+        range(ray.cluster_resources()["GPU"])))
+
+    num_gpus = ray.cluster_resources()["GPU"]
+    # print the number of GPUs available
+    print(f"Number of GPUs available: {num_gpus}")
     ray.init(num_gpus=8, runtime_env={"env_vars": env_vars})
     args = args.parse_args()
 
