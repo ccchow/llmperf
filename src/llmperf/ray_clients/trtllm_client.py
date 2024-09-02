@@ -42,6 +42,9 @@ class TrtLLMClient(LLMClient):
             "hf-internal-testing/llama-tokenizer"
         )
 
+        num_devices = torch.cuda.device_count()
+        print(f"Number of CUDA devices available: {num_devices}\n")
+
         runtime_rank = tensorrt_llm.mpi_rank()
         runner_cls = ModelRunnerCpp
         runner_kwargs = dict(
