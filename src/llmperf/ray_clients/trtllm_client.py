@@ -75,16 +75,58 @@ class TrtLLMClient(LLMClient):
                                       model_name=request_config.model,
                                       max_input_length=2048)
 
+        metrics = {}
+        metrics[common_metrics.ERROR_MSG] = ""
+        metrics[common_metrics.ERROR_CODE] = None
+        outputs = None
         try:
+            # print("Generating text...", torch.int32, torch.device("cuda"))
+            # print batch input ids
+            # print("Batch input ids: ", batch_input_ids)
+            # check runner
+            # if self.runner is None:
+                # print("Runner is None")
             with torch.no_grad():
                 outputs = self.runner.generate(
                     batch_input_ids,
-                    max_new_tokens=2048
-                )
+                    max_new_tokens=50,
+                    max_attention_window_size=None,
+                    sink_token_length=None,
+                    end_id=128009,
+                    pad_id=128009,
+                    temperature=1.0,
+                    top_k=1,
+                    top_p=0.0,
+                    num_beams=1,
+                    length_penalty=1.0,
+                    early_stopping=1,
+                    repetition_penalty=1.0,
+                    presence_penalty=0.0,
+                    frequency_penalty=0.0,
+                    stop_words_list=None,
+                    bad_words_list=None,
+                    output_cum_log_probs=False,
+                    output_log_probs=False,
+                    random_seed=0,
+                    lora_uids=None,
+                    prompt_table=None,
+                    prompt_tasks=None,
+                    streaming=False,
+                    output_sequence_lengths=True,
+                    no_repeat_ngram_size=None,
+                    return_dict=True,
+                    medusa_choices=None,
+                    return_all_generated_tokens=False
+                    )
+            # print("Text generated: ", outputs)
         except Exception as e:
+            print(f"Error generating text: {e}")
             metrics[common_metrics.ERROR_MSG] = str(e)
+            metrics[common_metrics.ERROR_CODE] = 1
+            # throw exception
+            raise e
 
-        output_ids = outputs['output_ids']
+        output_ids = outputs['output_ids'][0][0]
         generated_text = self.tokenizer.decode(output_ids)
 
         tokens_received = len(self.tokenizer.encode(generated_text))
@@ -92,7 +134,6 @@ class TrtLLMClient(LLMClient):
         total_request_time = time.monotonic() - start_time
         output_throughput = tokens_received / total_request_time
 
-        metrics = {}
         metrics[common_metrics.INTER_TOKEN_LAT] = sum(time_to_next_token)
         metrics[common_metrics.TTFT] = ttft
         metrics[common_metrics.E2E_LAT] = total_request_time
@@ -127,7 +168,7 @@ def parse_input(tokenizer,
             if prompt_template is not None:
                 input_text = prompt_template.format(input_text=input_text)
             input_ids = tokenizer.encode(
-                input_text,
+                input_text[0],
                 add_special_tokens=add_special_tokens,
                 truncation=True,
                 max_length=max_input_length)
